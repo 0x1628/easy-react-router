@@ -4,7 +4,6 @@ import {string2string, EventEmitter, queryToObject} from './utils'
 import {history} from './history'
 
 interface EasyReactRouterProps {
-  base: string
   initLocation?: string
   alias?: string2string
   resolve(pageFolderName: string): Promise<any> // TODO: not clean
@@ -23,9 +22,6 @@ export interface EasyReactRouterComponentProps {
 
 export class EasyReactRouter extends React.Component<EasyReactRouterProps, EasyReactRouterState> {
   static itemClassName = 'EasyReactRouterItem'
-  static defaultProps: Partial<EasyReactRouterProps> = {
-    base: 'pages',
-  }
 
   currentPages: ValidEasyReactRouterComponent[] = []
   pageNodes: HTMLElement[] = []
@@ -163,7 +159,7 @@ export class EasyReactRouter extends React.Component<EasyReactRouterProps, EasyR
       data: EasyReactRouterComponentProps | null,
       key: string | null,
   }> {
-    const {base, alias, resolve} = this.props
+    const {alias, resolve} = this.props
     const locationObject = new URL(location, 'http://whatever/')
     if (alias) {
       const currentPathName = locationObject.pathname
@@ -195,6 +191,7 @@ export class EasyReactRouter extends React.Component<EasyReactRouterProps, EasyR
       hash: queryToObject(locationObject.hash),
       pathname,
     }
+
     return resolve(pageFolderName).then(res => {
       if (!res || !res.default) {
         throw new Error('NotFound')

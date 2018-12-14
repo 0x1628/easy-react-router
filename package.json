@@ -1,6 +1,6 @@
 {
   "name": "easy-react-router",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "another react router toolbox focus on ease of use",
   "main": "lib/index.js",
   "scripts": {
@@ -29,6 +29,7 @@
   "homepage": "https://github.com/fragment0/easy-react-router#readme",
   "devDependencies": {
     "@fragment0/tslint-config": "^0.1.7",
+    "@types/node": "^10.12.15",
     "@types/react": "^16.7.13",
     "react": "^16.6.3",
     "tslint": "^5.11.0",
