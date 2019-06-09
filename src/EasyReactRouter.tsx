@@ -1,7 +1,13 @@
-/* tslint:disable:no-floating-promises */
+/* tslint:disable:no-floating-promises no-shadowed-variable */
 import * as React from 'react'
 import {string2string, EventEmitter, queryToObject} from './utils'
 import {history} from './history'
+
+type Unpacked<T> =
+    T extends (infer U)[] ? U :
+    T extends (...args: any[]) => infer U ? U :
+    T extends Promise<infer U> ? U :
+    T
 
 interface EasyReactRouterProps {
   initLocation?: string
@@ -14,10 +20,11 @@ interface EasyReactRouterState {
   pageInfo: {data: any, key: string | null}[]
 }
 
-export interface EasyReactRouterComponentProps {
+export interface EasyReactRouterComponentProps<P = {[key: string]: Promise<any>}> {
   pathname: string
   query: string2string
   hash: string2string
+  resolving?: {[k in keyof P]: Unpacked<P[k]>} | null
 }
 
 export class EasyReactRouter extends React.Component<EasyReactRouterProps, EasyReactRouterState> {
@@ -26,6 +33,10 @@ export class EasyReactRouter extends React.Component<EasyReactRouterProps, EasyR
   currentPages: ValidEasyReactRouterComponent[] = []
   pageNodes: HTMLElement[] = []
   queue: {location: string, isForward: boolean} | null = null
+  state = {
+    loading: false,
+    pageInfo: [] as EasyReactRouterState['pageInfo'],
+  }
 
   constructor(props: EasyReactRouterProps) {
     super(props)
@@ -81,6 +92,7 @@ export class EasyReactRouter extends React.Component<EasyReactRouterProps, EasyR
 
   parse = async (location: string, isForward = true) => {
     const {page, data, key} = await this.findTargetPage(location)
+
     if (!page) {
       this.currentPages = []
       this.setState({loading: false, pageInfo: []})
@@ -196,9 +208,14 @@ export class EasyReactRouter extends React.Component<EasyReactRouterProps, EasyR
       if (!res || !res.default) {
         throw new Error('NotFound')
       }
+      const page = res.default as ValidEasyReactRouterComponent
+
       return {
-        page: res.default as ValidEasyReactRouterComponent,
-        data,
+        page,
+        data: {
+          ...data,
+          resolving: page.resolve ? page.resolve(data) : null,
+        },
         key: `${locationObject.pathname}-${locationObject.search}-${locationObject.hash}}`,
       }
     }).catch(e => {
@@ -237,6 +254,7 @@ export class EasyReactRouterComponent<P = {}, S = {}, SS = any>
   static exitAnim?: Animation
   static popEnterAnim?: Animation
   static popExitAnim?: Animation
+  static resolve?: Resolver
 }
 
 export interface EasyReactRouterComponentClass<P = {}, S = {}>
@@ -245,6 +263,7 @@ export interface EasyReactRouterComponentClass<P = {}, S = {}>
   exitAnim?: Animation
   popEnterAnim?: Animation
   popExitAnim?: Animation
+  resolve?: Resolver
 }
 
 export interface FunctionEasyReactRouterComponent<P = {}>
@@ -253,8 +272,11 @@ export interface FunctionEasyReactRouterComponent<P = {}>
   exitAnim?: Animation
   popEnterAnim?: Animation
   popExitAnim?: Animation
+  resolve?: Resolver
 }
 
 type ValidEasyReactRouterComponent = EasyReactRouterComponentClass | FunctionEasyReactRouterComponent
 
 export type Animation = (node: HTMLElement) => Promise<void>
+
+export type Resolver = (props: EasyReactRouterComponentProps) => {[key: string]: Promise<any>}

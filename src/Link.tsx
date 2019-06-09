@@ -1,15 +1,16 @@
 import * as React from 'react'
 import {history} from './history'
 
-export interface LinkProps {
+export interface LinkProps extends React.HTMLProps<any> {
   href: string
   target?: '_blank' | '_self' | undefined
-  Component?: string | React.ComponentClass
-  onClick?(e: MouseEvent): boolean | void
+  Component?: string | React.ComponentType<any>
+  onClick?(e: React.MouseEvent): boolean | void
+  [key: string]: any
 }
 
 export class Link extends React.Component<LinkProps> {
-  handleClick = (e: MouseEvent) => {
+  handleClick = (e: React.MouseEvent) => {
     const {onClick, href, target} = this.props
     e.preventDefault()
     if (onClick) {
