@@ -12,7 +12,7 @@ type Unpacked<T> =
 interface EasyReactRouterProps {
   initLocation?: string
   alias?: string2string
-  resolve(pageFolderName: string): Promise<any> // TODO: not clean
+  resolve(pageFolderName: string): Promise<any> | any // TODO: not clean
 }
 
 interface EasyReactRouterState {
@@ -41,7 +41,7 @@ export class EasyReactRouter extends React.Component<EasyReactRouterProps, EasyR
   constructor(props: EasyReactRouterProps) {
     super(props)
     if (props.initLocation) { // server render
-      this.parse(props.initLocation || '/')
+      this.parseForNode(props.initLocation)
     } else {
       this.state = {
         loading: true,
@@ -88,6 +88,27 @@ export class EasyReactRouter extends React.Component<EasyReactRouterProps, EasyR
 
   reFind = (isForwoard = true) => {
     this.parse(window.location.href, isForwoard)
+  }
+
+  parseForNode(path: string) {
+    const {resolve} = this.props
+    const locationObject = this.findLocation(path)
+    const pageFolderName = this.getPageFolderName(locationObject)
+    let page = resolve(pageFolderName)
+    if (!page) {
+      throw new Error('NotFound')
+    }
+    page = page.default
+
+    this.currentPages = [page]
+    this.state.pageInfo = [{
+      key: this.getComponentKey(locationObject),
+      data: {
+        query: queryToObject(locationObject.search),
+        hash: queryToObject(locationObject.hash),
+        pathname: locationObject.pathname.slice(1),
+      },
+    }]
   }
 
   parse = async (location: string, isForward = true) => {
@@ -165,38 +186,54 @@ export class EasyReactRouter extends React.Component<EasyReactRouterProps, EasyR
     }
   }
 
+  findLocation(location: string): URL {
+    const {alias} = this.props
+    const locationObject = new URL(location, 'http://whatever/')
+    if (alias) {
+      if (alias) {
+        const currentPathName = locationObject.pathname
+        Object.keys(alias).some(re => {
+          let targetRe = re
+          if (!targetRe.endsWith('$')) {
+            targetRe = `${targetRe}$`
+          }
+          if (!targetRe.startsWith('^')) {
+            targetRe = `^${targetRe}`
+          }
+          const aliasRe = new RegExp(targetRe, 'ig')
+          const replaced = currentPathName.replace(aliasRe, alias[re])
+          if (replaced !== currentPathName) {
+            const [path, search] = replaced.split('?')
+            locationObject.pathname = path
+            locationObject.search += `&${search || ''}`
+            return true
+          }
+          return false
+        })
+      }
+    }
+    return locationObject
+  }
+
+  getPageFolderName(locationObject: URL) {
+    return locationObject.pathname.slice(1).replace(/\//ig, '-')
+  }
+
+  getComponentKey(locationObject: URL) {
+    return `${locationObject.pathname}-${locationObject.search}-${locationObject.hash}}`
+  }
+
   async findTargetPage(location: string, originError?: any)
     : Promise<{
       page: ValidEasyReactRouterComponent | null,
       data: EasyReactRouterComponentProps | null,
       key: string | null,
   }> {
-    const {alias, resolve} = this.props
-    const locationObject = new URL(location, 'http://whatever/')
-    if (alias) {
-      const currentPathName = locationObject.pathname
-      Object.keys(alias).some(re => {
-        let targetRe = re
-        if (!targetRe.endsWith('$')) {
-          targetRe = `${targetRe}$`
-        }
-        if (!targetRe.startsWith('^')) {
-          targetRe = `^${targetRe}`
-        }
-        const aliasRe = new RegExp(targetRe, 'ig')
-        const replaced = currentPathName.replace(aliasRe, alias[re])
-        if (replaced !== currentPathName) {
-          const [path, search] = replaced.split('?')
-          locationObject.pathname = path
-          locationObject.search += `&${search || ''}`
-          return true
-        }
-        return false
-      })
-    }
+    const {resolve} = this.props
 
+    const locationObject = this.findLocation(location)
     const pathname = locationObject.pathname.slice(1)
-    const pageFolderName = pathname.replace(/\//ig, '-')
+    const pageFolderName = this.getPageFolderName(locationObject)
 
     const data: EasyReactRouterComponentProps = {
       query: queryToObject(locationObject.search),
@@ -204,7 +241,7 @@ export class EasyReactRouter extends React.Component<EasyReactRouterProps, EasyR
       pathname,
     }
 
-    return resolve(pageFolderName).then(res => {
+    return Promise.resolve(resolve(pageFolderName)).then(res => {
       if (!res || !res.default) {
         throw new Error('NotFound')
       }
@@ -216,7 +253,7 @@ export class EasyReactRouter extends React.Component<EasyReactRouterProps, EasyR
           ...data,
           resolving: page.resolve ? page.resolve(data) : null,
         },
-        key: `${locationObject.pathname}-${locationObject.search}-${locationObject.hash}}`,
+        key: this.getComponentKey(locationObject),
       }
     }).catch(e => {
       if (pathname !== '404') {
