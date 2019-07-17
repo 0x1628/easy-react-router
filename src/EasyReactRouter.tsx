@@ -12,6 +12,7 @@ type Unpacked<T> =
 interface EasyReactRouterProps {
   initLocation?: string
   alias?: string2string
+  base?: string
   resolve(pageFolderName: string): Promise<any> | any // TODO: not clean
 }
 
@@ -187,30 +188,31 @@ export class EasyReactRouter extends React.Component<EasyReactRouterProps, EasyR
   }
 
   findLocation(location: string): URL {
-    const {alias} = this.props
+    const {alias, base} = this.props
     const locationObject = new URL(location, 'http://whatever/')
+    if (base) {
+      locationObject.pathname = locationObject.pathname.replace(new RegExp(`^${base}`), '')
+    }
     if (alias) {
-      if (alias) {
-        const currentPathName = locationObject.pathname
-        Object.keys(alias).some(re => {
-          let targetRe = re
-          if (!targetRe.endsWith('$')) {
-            targetRe = `${targetRe}$`
-          }
-          if (!targetRe.startsWith('^')) {
-            targetRe = `^${targetRe}`
-          }
-          const aliasRe = new RegExp(targetRe, 'ig')
-          const replaced = currentPathName.replace(aliasRe, alias[re])
-          if (replaced !== currentPathName) {
-            const [path, search] = replaced.split('?')
-            locationObject.pathname = path
-            locationObject.search += `&${search || ''}`
-            return true
-          }
-          return false
-        })
-      }
+      const currentPathName = locationObject.pathname
+      Object.keys(alias).some(re => {
+        let targetRe = re
+        if (!targetRe.endsWith('$')) {
+          targetRe = `${targetRe}$`
+        }
+        if (!targetRe.startsWith('^')) {
+          targetRe = `^${targetRe}`
+        }
+        const aliasRe = new RegExp(targetRe, 'ig')
+        const replaced = currentPathName.replace(aliasRe, alias[re])
+        if (replaced !== currentPathName) {
+          const [path, search] = replaced.split('?')
+          locationObject.pathname = path
+          locationObject.search += `&${search || ''}`
+          return true
+        }
+        return false
+      })
     }
     return locationObject
   }

@@ -1,6 +1,6 @@
 {
   "name": "easy-react-router",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "description": "another react router toolbox focus on ease of use",
   "main": "lib/index.js",
   "module": "esm/index.js",
