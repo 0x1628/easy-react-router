@@ -6,6 +6,6 @@
     "jsx": "react",
     "declaration": true,
     "lib": ["esnext", "dom"],
-    "target": "es5"
+    "target": "es3"
   }
 }
